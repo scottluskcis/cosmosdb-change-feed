@@ -3,25 +3,24 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using Shared.Configuration;
 using Microsoft.Extensions.Options;
+using Shared.Services;
 
 namespace app
 {
     public class Application
     {
         private readonly ILogger _logger;
-        private readonly AppConfiguration _config;
+        private readonly ICosmosService _service;
 
-        public Application(IOptions<AppConfiguration> configuration, ILogger<Application> logger)
+        public Application(ICosmosService service, ILogger<Application> logger)
         {
-            _config = configuration.Value;
+            _service = service;
             _logger = logger;
         }
 
         internal async Task RunAsync()
         {
             _logger.LogInformation($"{nameof(RunAsync)} - Start");
-            
-            _logger.LogInformation($"config value: {_config.Value}");
 
             await Task.Delay(10);
 

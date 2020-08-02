@@ -32,9 +32,18 @@ namespace Shared.Extensions
                 response.RequestCharge);
         }
 
+        public static void LogFeedResponse<T>(this ILogger logger, [NotNull] FeedResponse<T> response)
+        {
+            logger.LogInformation("FeedResponse - Count: {Count}, ActivityId: {ActivityId}, StatusCode: {StatusCode}, RequestCharge: {RequestCharge}",
+                response.Count,
+                response.ActivityId,
+                response.StatusCode,
+                response.RequestCharge);
+        }
+
         public static void LogPartitionKey(this ILogger logger, PartitionKey key, Container container)
         {
-            logger.LogInformation("PartitionKey: {PartitionKey}, ContainerId: {ContainerId}", 
+            logger.LogDebug("PartitionKey: {PartitionKey}, ContainerId: {ContainerId}", 
                 key.ToString(),
                 container.Id);
         }

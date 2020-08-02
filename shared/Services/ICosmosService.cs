@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Shared.Entities;
@@ -24,5 +27,16 @@ namespace Shared.Services
             string id, 
             string partitionKey, 
             CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<TEntity>> ReadItemsAsync(
+            Expression<Func<TEntity, bool>> predicate = null,
+            string partitionKey = "", 
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<TEntity>> QueryItemsAsync(
+            string sql, 
+            string partitionKey = "",
+            CancellationToken cancellationToken = default);
+
     }
 }

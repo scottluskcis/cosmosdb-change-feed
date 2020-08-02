@@ -1,9 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Linq;
 using Shared.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -36,7 +39,8 @@ namespace Shared.Services
             var itemResponse = await container.CreateItemAsync(item, cancellationToken: cancellationToken);
             _logger.LogItemResponse(itemResponse);
 
-            return itemResponse.Resource;
+            var result = itemResponse.Resource;
+            return result;
         }
 
         public async Task<TEntity> ReadItemAsync(string id, string partitionKey, CancellationToken cancellationToken = default)
@@ -49,12 +53,8 @@ namespace Shared.Services
             var itemResponse = await container.ReadItemAsync<TEntity>(id, pk, cancellationToken: cancellationToken); 
             _logger.LogItemResponse(itemResponse);
 
-            return itemResponse.Resource;
-        }
-
-        public Task<IEnumerable<TEntity>> ReadItemsAsync(string id, string partitionKey, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
+            var result = itemResponse.Resource;
+            return result;
         }
 
         public async Task<TEntity> ReplaceItemAsync(TEntity item, CancellationToken cancellationToken = default)
@@ -67,7 +67,8 @@ namespace Shared.Services
             var itemResponse = await container.ReplaceItemAsync(item, item.Id, pk, cancellationToken: cancellationToken);
             _logger.LogItemResponse(itemResponse);
             
-            return itemResponse.Resource;
+            var result = itemResponse.Resource;
+            return result;
         }
 
         public async Task<TEntity> DeleteItemAsync(string id, string partitionKey, CancellationToken cancellationToken = default)
@@ -80,7 +81,83 @@ namespace Shared.Services
             var itemResponse = await container.DeleteItemAsync<TEntity>(id, pk, cancellationToken: cancellationToken);
             _logger.LogItemResponse(itemResponse);
             
-            return itemResponse.Resource;
+            var result = itemResponse.Resource;
+            return result;
+        }
+         
+        public async Task<IEnumerable<TEntity>> ReadItemsAsync(Expression<Func<TEntity, bool>> predicate = null, string partitionKey = "", CancellationToken cancellationToken = default)
+        {
+            var container = await GetContainerAsync(cancellationToken);
+
+            var requestOptions = new QueryRequestOptions();
+
+            if (!string.IsNullOrEmpty(partitionKey))
+            {
+                requestOptions.PartitionKey = new PartitionKey(partitionKey);
+                _logger.LogPartitionKey(requestOptions.PartitionKey.Value, container);
+            }
+
+            if (_config.ConsistencyLevel.HasValue)
+            {
+                requestOptions.ConsistencyLevel = _config.ConsistencyLevel;
+                _logger.LogInformation("ConsistencyLevel: {ConsistencyLevel}", requestOptions.ConsistencyLevel);
+            }
+             
+            IQueryable<TEntity> query = container.GetItemLinqQueryable<TEntity>(requestOptions: requestOptions);
+
+            if (predicate != null)
+            {
+                query = query.Where(predicate);
+                _logger.LogDebug("Predicate has been applied to ItemLinqQueryable");
+            }
+
+            var result = new List<TEntity>();
+
+            using var feedIterator = query.ToFeedIterator();
+            while (feedIterator.HasMoreResults)
+            {
+                var feedResponse = await feedIterator.ReadNextAsync(cancellationToken);
+                _logger.LogFeedResponse(feedResponse);
+                result.AddRange(feedResponse);
+            }
+
+            return result;
+        }
+
+        public async Task<IEnumerable<TEntity>> QueryItemsAsync(string sql, string partitionKey = "", CancellationToken cancellationToken = default)
+        {
+            var container = await GetContainerAsync(cancellationToken);
+
+            var requestOptions = new QueryRequestOptions();
+
+            if (!string.IsNullOrEmpty(partitionKey))
+            {
+                requestOptions.PartitionKey = new PartitionKey(partitionKey);
+                _logger.LogPartitionKey(requestOptions.PartitionKey.Value, container);
+            }
+
+            if (_config.ConsistencyLevel.HasValue)
+            {
+                requestOptions.ConsistencyLevel = _config.ConsistencyLevel;
+                _logger.LogInformation("ConsistencyLevel: {ConsistencyLevel}", requestOptions.ConsistencyLevel);
+            }
+
+            var queryDefinition = new QueryDefinition(sql);
+
+            var result = new List<TEntity>();
+
+            using var feedIterator = container.GetItemQueryIterator<TEntity>(
+                queryDefinition, 
+                requestOptions: requestOptions);
+            
+            while (feedIterator.HasMoreResults)
+            {
+                var feedResponse = await feedIterator.ReadNextAsync(cancellationToken);
+                _logger.LogFeedResponse(feedResponse);
+                result.AddRange(feedResponse);
+            }
+
+            return result;
         }
 
         private async Task<Container> GetContainerAsync(CancellationToken cancellationToken = default)
@@ -94,7 +171,8 @@ namespace Shared.Services
             var containerResponse = await database.CreateContainerIfNotExistsAsync(props, cancellationToken: cancellationToken);
             _logger.LogContainerResponse(containerResponse);
             
-            return _container ??= containerResponse.Container;
+            var container = _container ??= containerResponse.Container;
+            return container;
         }
 
         private async Task<Database> CreateDatabaseAsync(CancellationToken cancellationToken = default)
@@ -105,7 +183,8 @@ namespace Shared.Services
             var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(_config.DatabaseId, cancellationToken: cancellationToken);
             _logger.LogDatabaseResponse(databaseResponse);
              
-            return _database ??= databaseResponse.Database;
+            var database = _database ??= databaseResponse.Database;
+            return database;
         }
     }
 }

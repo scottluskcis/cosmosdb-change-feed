@@ -1,6 +1,8 @@
+using System;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using Shared.Entities;
+using Shared.Extensions;
 using Shared.Services;
 
 namespace app

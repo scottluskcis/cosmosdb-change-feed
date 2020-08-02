@@ -10,6 +10,7 @@ namespace Shared.Attributes
     public sealed class CosmosEntityAttribute : Attribute
     {
         public string ContainerId { get; }
+
         public string PartitionKeyPath { get; }
 
         public CosmosEntityAttribute([NotNull] string containerId, [NotNull] string partitionKeyPath)

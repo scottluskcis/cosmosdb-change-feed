@@ -1,8 +1,6 @@
-using System;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-using Shared.Configuration;
-using Microsoft.Extensions.Options;
+using Shared.Entities;
 using Shared.Services;
 
 namespace app
@@ -10,9 +8,9 @@ namespace app
     public class Application
     {
         private readonly ILogger _logger;
-        private readonly ICosmosService _service;
+        private readonly ICosmosService<PersonEntity> _service;
 
-        public Application(ICosmosService service, ILogger<Application> logger)
+        public Application(ICosmosService<PersonEntity> service, ILogger<Application> logger)
         {
             _service = service;
             _logger = logger;

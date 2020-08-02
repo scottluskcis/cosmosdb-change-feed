@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Fluent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Configuration.FileExtensions;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Options;
 using Shared.Configuration;
+using Shared.Extensions;
 using Shared.Services;
 
 namespace app
@@ -30,16 +32,7 @@ namespace app
                     services.AddLogging(configure => configure.AddConsole());
                     services.AddTransient<Application>();
 
-                    services.AddSingleton((s) =>
-                    {
-                        var options = s.GetService<IOptions<CosmosDbConfiguration>>();
-                        var cosmosDbConfig = options.Value;
-
-                        var configurationBuilder =
-                            new CosmosClientBuilder(cosmosDbConfig.EndpointUri, cosmosDbConfig.PrimaryKey);
-                        return configurationBuilder.Build();
-                    });
-
+                    services.AddCosmosClient();
                     services.AddScoped(typeof(ICosmosService<>), typeof(CosmosService<>));
                 });
 

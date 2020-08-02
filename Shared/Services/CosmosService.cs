@@ -35,7 +35,7 @@ namespace Shared.Services
             return itemResponse.Resource;
         }
 
-        public async Task<TEntity> ReadItemAsync(string id, string partitionKeyValue = "")
+        public async Task<TEntity> ReadItemAsync(string id, string partitionKeyValue)
         {
             var container = await GetContainerAsync();
 
@@ -61,7 +61,7 @@ namespace Shared.Services
             return itemResponse.Resource;
         }
 
-        public async Task<TEntity> DeleteItemAsync(string id, string partitionKeyValue = "")
+        public async Task<TEntity> DeleteItemAsync(string id, string partitionKeyValue)
         {
             var container = await GetContainerAsync();
             
@@ -92,7 +92,7 @@ namespace Shared.Services
         {
             if (_database != null)
                 return _database;
-             
+            
             var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(_config.DatabaseId);
             _logger.LogDatabaseResponse(databaseResponse);
              

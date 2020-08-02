@@ -8,10 +8,10 @@ namespace Shared.Services
     {
         Task<TEntity> CreateItemAsync(TEntity item);
 
-        Task<TEntity> ReadItemAsync(string id, string partitionKeyValue = "");
+        Task<TEntity> ReadItemAsync(string id, string partitionKeyValue);
 
         Task<TEntity> ReplaceItemAsync(TEntity item);
 
-        Task<TEntity> DeleteItemAsync(string id, string partitionKeyValue = "");
+        Task<TEntity> DeleteItemAsync(string id, string partitionKeyValue);
     }
 }

@@ -40,7 +40,7 @@ namespace app
                         return configurationBuilder.Build();
                     });
 
-                    services.AddTransient<ICosmosService, CosmosService>();
+                    services.AddScoped(typeof(ICosmosService<>), typeof(CosmosService<>));
                 });
 
             var host = builder.Build();

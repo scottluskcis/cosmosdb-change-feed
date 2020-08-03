@@ -125,7 +125,7 @@ namespace Shared.Services
             var pk = item.GetPartitionKey();
             _logger.LogPartitionKey(pk, container);
 
-            var itemResponse = await container.ReplaceItemAsync(item, item.Id, pk, cancellationToken: cancellationToken);
+            var itemResponse = await container.ReplaceItemAsync(item, item.GetId(), pk, cancellationToken: cancellationToken);
             _logger.LogItemResponse(itemResponse);
             
             var result = itemResponse.Resource;

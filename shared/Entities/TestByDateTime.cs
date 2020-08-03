@@ -18,8 +18,10 @@ namespace Shared.Entities
 
         public int Year { get; set; }
 
-        public IDictionary<string, Guid[]> Lookup { get; set; } = new Dictionary<string, Guid[]>();
-        
+        public string Category { get; set; }
+
+        public string Name { get; set; }
+
         public override string GetId() => Id.ToString();
     }
 }

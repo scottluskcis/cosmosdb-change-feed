@@ -14,7 +14,7 @@ using Shared.Helpers;
 
 namespace Shared.Services
 {
-    public class CosmosService : ICosmosService
+    public class CosmosService : ICosmosService, IBulkExecutorCosmosService
     {
         private readonly CosmosClient _client;
         private readonly CosmosDbConfiguration _config;
@@ -38,36 +38,6 @@ namespace Shared.Services
             _logger.LogItemResponse(itemResponse);
 
             var result = itemResponse.Resource;
-            return result;
-        }
-
-        public async Task<IEnumerable<TEntity>> BulkCreateItemsAsync<TEntity>(
-            IList<TEntity> entities,
-            int cancelBulkExecutionAfter = 30000)
-            where TEntity : BaseEntity
-        {
-            if (!(_config.AllowBulkExecution ?? false))
-                throw new InvalidOperationException($"{nameof(_config.AllowBulkExecution)} must be true in order to perform this operation");
-
-            var container = GetContainer<TEntity>();
-
-            var bulkOperations = new BulkOperations<TEntity>(entities.Count());
-            foreach (var entity in entities)
-            {
-                bulkOperations.Tasks.Add(container
-                    .CreateItemAsync(
-                        item: entity,
-                        partitionKey: entity.GetPartitionKey())
-                    .CaptureOperationResponse(entity));
-            }
-
-            var bulkOperationResponse =  await bulkOperations.ExecuteAsync();
-            _logger.LogBulkOperationResponse(bulkOperationResponse);
-
-            if(bulkOperationResponse.Failures.Any())
-                _logger.LogWarning("{FailureCount} items failed to be created during bulk operation", bulkOperationResponse.Failures.Count);
-            
-            var result = bulkOperationResponse.Successes;
             return result;
         }
 
@@ -100,6 +70,23 @@ namespace Shared.Services
             _logger.LogPartitionKey(pk, container);
 
             var itemResponse = await container.ReplaceItemAsync(item, item.GetId(), pk, cancellationToken: cancellationToken);
+            _logger.LogItemResponse(itemResponse);
+            
+            var result = itemResponse.Resource;
+            return result;
+        }
+        
+        public async Task<TEntity> UpsertItemAsync<TEntity>(
+            TEntity item, 
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity
+        {
+            var container = GetContainer<TEntity>();
+
+            var pk = item.GetPartitionKey();
+            _logger.LogPartitionKey(pk, container);
+
+            var itemResponse = await container.UpsertItemAsync(item, pk, cancellationToken: cancellationToken);
             _logger.LogItemResponse(itemResponse);
             
             var result = itemResponse.Resource;
@@ -206,7 +193,49 @@ namespace Shared.Services
 
             return result;
         }
+        
+        public async Task<IEnumerable<TEntity>> BulkCreateItemsAsync<TEntity>(IList<TEntity> entities)
+            where TEntity : BaseEntity
+        {
+            var container = GetContainer<TEntity>();
 
+            var result = await BulkOperationAsync(entities, item =>
+            {
+                var partitionKey = item.GetPartitionKey();
+                return container.CreateItemAsync(item, partitionKey);
+            });
+
+            return result;
+        }
+
+        public async Task<IEnumerable<TEntity>> BulkUpsertItemsAsync<TEntity>(IList<TEntity> entities)
+            where TEntity : BaseEntity
+        {
+            var container = GetContainer<TEntity>();
+
+            var result = await BulkOperationAsync(entities, item =>
+            {
+                var partitionKey = item.GetPartitionKey();
+                return container.UpsertItemAsync(item, partitionKey);
+            });
+
+            return result;
+        }
+
+        public async Task<IEnumerable<TEntity>> BulkReplaceItemsAsync<TEntity>(IList<TEntity> entities)
+            where TEntity : BaseEntity
+        {
+            var container = GetContainer<TEntity>();
+
+            var result = await BulkOperationAsync(entities, item =>
+            {
+                var partitionKey = item.GetPartitionKey();
+                return container.ReplaceItemAsync(item, item.GetId(), partitionKey);
+            });
+
+            return result;
+        }
+         
         private Container GetContainer<TEntity>()
             where TEntity : BaseEntity
         {
@@ -215,6 +244,26 @@ namespace Shared.Services
 
             var container = database.GetContainer(props.Id);
             return container;
+        }
+        
+        private async Task<IEnumerable<TEntity>> BulkOperationAsync<TEntity>(IList<TEntity> entities, Func<TEntity, Task<ItemResponse<TEntity>>> operationFunc)
+            where TEntity : BaseEntity
+        {
+            if (!(_config.AllowBulkExecution ?? false))
+                throw new InvalidOperationException($"{nameof(_config.AllowBulkExecution)} must be true in order to perform this operation");
+            
+            var bulkOperations = new BulkOperations<TEntity>(entities.Count);
+            foreach (var entity in entities)
+                bulkOperations.Tasks.Add(operationFunc(entity).CaptureOperationResponse(entity));
+
+            var bulkOperationResponse =  await bulkOperations.ExecuteAsync();
+            _logger.LogBulkOperationResponse(bulkOperationResponse);
+
+            if(bulkOperationResponse.Failures.Any())
+                _logger.LogWarning("{FailureCount} items failed during bulk operation", bulkOperationResponse.Failures.Count);
+            
+            var result = bulkOperationResponse.Successes;
+            return result;
         }
 
         private Database GetDatabase()

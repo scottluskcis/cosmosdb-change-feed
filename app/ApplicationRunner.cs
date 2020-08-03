@@ -55,7 +55,10 @@ namespace App
                     .With(x => x.Category = "Dolor")
                 .Build();
 
-            await _service.BulkCreateItemsAsync(groups);
+            if(_service is IBulkExecutorCosmosService bulkExecutorService)
+                await bulkExecutorService.BulkCreateItemsAsync(groups);
+            else
+                throw new NotSupportedException("service does not support Bulk Execution");
         }
 
     }

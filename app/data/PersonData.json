@@ -1,0 +1,22 @@
+[
+  {
+    "firstName": "Michael",
+    "lastName": "Scott",
+    "dateOfBirth": "1975-06-08T00:00:00"
+  },
+  {
+    "firstName": "Jim",
+    "lastName": "Halpert",
+    "dateOfBirth": "1981-04-15T00:00:00"
+  },
+  {
+    "firstName": "Dwight",
+    "lastName": "Schrute",
+    "dateOfBirth": "1976-02-20T00:00:00"
+  },
+  {
+    "firstName": "Pam",
+    "lastName": "Halpert",
+    "dateOfBirth": "1983-06-30T00:00:00"
+  }
+]

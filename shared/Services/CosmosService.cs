@@ -252,6 +252,8 @@ namespace Shared.Services
         public async Task<Container> CreateContainerIfNotExistsAsync<TEntity>(CancellationToken cancellationToken = default)
             where TEntity : BaseEntity
         {
+            _logger.LogInformation("{Action} - Start", nameof(CreateContainerIfNotExistsAsync));
+
             var database = await CreateDatabaseIfNotExistsAsync(_config.DatabaseId, cancellationToken); 
             var props = typeof(TEntity).GetContainerProperties();
 
@@ -259,15 +261,23 @@ namespace Shared.Services
             _logger.LogContainerResponse(containerResponse);
             
             var container = containerResponse.Container;
+            
+            _logger.LogInformation("{Action} - Start", nameof(CreateContainerIfNotExistsAsync));
+
             return container;
         }
 
         private async Task<Database> CreateDatabaseIfNotExistsAsync(string databaseId, CancellationToken cancellationToken = default)
         {
+            _logger.LogDebug("{Action} - Start", nameof(CreateDatabaseIfNotExistsAsync));
+
             var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(databaseId, cancellationToken: cancellationToken);
             _logger.LogDatabaseResponse(databaseResponse);
              
             var database = databaseResponse.Database;
+            
+            _logger.LogInformation("{Action} - End", nameof(CreateDatabaseIfNotExistsAsync));
+
             return database;
         }
     }

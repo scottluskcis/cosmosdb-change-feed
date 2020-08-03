@@ -6,7 +6,8 @@ namespace Shared.Attributes
     [AttributeUsage(
         AttributeTargets.Class,
         AllowMultiple = false,
-        Inherited = true)]
+        Inherited = true
+    )]
     public sealed class CosmosEntityAttribute : Attribute
     {
         public string ContainerId { get; }

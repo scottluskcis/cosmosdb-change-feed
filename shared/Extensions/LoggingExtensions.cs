@@ -25,7 +25,7 @@ namespace Shared.Extensions
 
         public static void LogDatabaseResponse(this ILogger logger, [NotNull] DatabaseResponse response)
         {
-            logger.LogInformation("ContainerResponse - DatabaseId: {DatabaseId}, ActivityId: {ActivityId}, StatusCode: {StatusCode}, RequestCharge: {RequestCharge}",
+            logger.LogInformation("DatabaseResponse - DatabaseId: {DatabaseId}, ActivityId: {ActivityId}, StatusCode: {StatusCode}, RequestCharge: {RequestCharge}",
                 response.Database.Id,
                 response.ActivityId,
                 response.StatusCode,

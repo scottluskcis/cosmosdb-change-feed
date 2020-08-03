@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using App;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -36,7 +37,8 @@ namespace app
 
                     services.AddCosmosClient();
                     services.AddTransient<ICosmosService, CosmosService>();
-
+                    
+                    services.AddTransient<IApplicationRunner, ApplicationRunner>();
                     services.AddScoped<IHostedService, ApplicationHostedService>();
                 });
 

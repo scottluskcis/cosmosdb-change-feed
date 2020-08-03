@@ -14,41 +14,33 @@ namespace app
     {
         static async Task Main(string[] args)
         {
-            var config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", true, true)
-                .Build();
-
-            var builder = new HostBuilder()
+            var hostBuilder = new HostBuilder()
+                .ConfigureHostConfiguration((config) =>
+                {
+                    config.AddEnvironmentVariables();
+                })
+                .ConfigureAppConfiguration((hostContext, config) =>
+                {
+                    config.SetBasePath(Environment.CurrentDirectory);
+                    config.AddJsonFile("appsettings.json", optional: false);
+                    config.AddJsonFile($"appsettings.{hostContext.HostingEnvironment.EnvironmentName}.json", optional: true);
+                    config.AddEnvironmentVariables();
+                })
+                .ConfigureLogging((hostContext, config) =>
+                {
+                    config.AddConsole();
+                })
                 .ConfigureServices((hostContext, services) =>
                 {
-                    services.AddOptions<CosmosDbConfiguration>()
-                        .Bind(config.GetSection("CosmosDb"));
-
-                    services.AddLogging(configure => configure.AddConsole());
-                    services.AddTransient<Application>();
+                    services.AddConfigurationSection<CosmosDbConfiguration>("CosmosDb");
 
                     services.AddCosmosClient();
                     services.AddTransient<ICosmosService, CosmosService>();
+
+                    services.AddScoped<IHostedService, ApplicationHostedService>();
                 });
 
-            var host = builder.Build();
-
-            using (var serviceScope = host.Services.CreateScope())
-            {
-                var services = serviceScope.ServiceProvider;
-
-                try
-                {
-                    var appService = services.GetRequiredService<Application>();
-                    await appService.RunAsync();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error Occurred: {ex}");
-                }
-            }
-
-            Console.ReadKey();
+            await hostBuilder.RunConsoleAsync();
         }
 
     }

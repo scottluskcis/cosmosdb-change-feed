@@ -9,7 +9,6 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
 using Shared.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Shared.Entities;
 using Shared.Extensions;
 
@@ -21,10 +20,10 @@ namespace Shared.Services
         private readonly CosmosDbConfiguration _config;
         private readonly ILogger _logger;
 
-        public CosmosService(CosmosClient client, IOptions<CosmosDbConfiguration> configuration, ILogger<CosmosService> logger)
+        public CosmosService(CosmosClient client, CosmosDbConfiguration configuration, ILogger<CosmosService> logger)
         {
             _client = client;
-            _config = configuration.Value;
+            _config = configuration;
             _logger = logger;
         }
 

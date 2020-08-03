@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -38,6 +37,63 @@ namespace Shared.Services
             _logger.LogItemResponse(itemResponse);
 
             var result = itemResponse.Resource;
+            return result;
+        }
+
+        public async Task<IEnumerable<TEntity>> BulkCreateItemsAsync<TEntity>(
+            IEnumerable<TEntity> entities,
+            int cancelBulkExecutionAfter = 30000)
+            where TEntity : BaseEntity
+        {
+            if (!(_config.AllowBulkExecution ?? false))
+                throw new InvalidOperationException($"{nameof(_config.AllowBulkExecution)} must be true in order to perform this operation");
+
+            var cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.CancelAfter(cancelBulkExecutionAfter > 0 ? cancelBulkExecutionAfter : 30000);
+
+            var cancellationToken = cancellationTokenSource.Token;
+            
+            var container = GetContainer<TEntity>();
+            
+            var errorCount = 0;
+            var result = new List<TEntity>();
+            var asyncTasks = new List<Task>(100);
+
+            void ContinuationFunction(Task<ItemResponse<TEntity>> task)
+            {
+                if (!task.IsCompletedSuccessfully)
+                {
+                    var innerExceptions = task.Exception?.Flatten();
+                    var cosmosException = innerExceptions?.InnerExceptions.FirstOrDefault(innerEx => innerEx is CosmosException) as CosmosException;
+
+                    _logger.LogError(cosmosException, $"Error trying to perform action {nameof(BulkCreateItemsAsync)}");
+                    errorCount += 1;
+                }
+                else
+                {
+                    result.Add(task.Result.Resource);
+                    _logger.LogItemResponse(task.Result);
+                }
+            }
+            
+            _logger.LogInformation($"{nameof(BulkCreateItemsAsync)} - starting");
+
+            asyncTasks.AddRange(
+                entities
+                    .Select(entity =>
+                        container.CreateItemAsync(
+                                item: entity,
+                                partitionKey: entity.GetPartitionKey(),
+                                cancellationToken: cancellationToken)
+                            .ContinueWith(ContinuationFunction, cancellationToken)));
+
+            await Task.WhenAll(asyncTasks);
+
+            if (errorCount > 0)
+                _logger.LogInformation($"{errorCount} records failed to be created during action {nameof(BulkCreateItemsAsync)}, check logs for error details");
+
+            _logger.LogInformation($"{nameof(BulkCreateItemsAsync)} - completed");
+
             return result;
         }
 

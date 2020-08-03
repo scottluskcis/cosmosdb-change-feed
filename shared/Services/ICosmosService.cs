@@ -15,6 +15,11 @@ namespace Shared.Services
             CancellationToken cancellationToken = default)
             where TEntity : BaseEntity;
 
+        Task<IEnumerable<TEntity>> BulkCreateItemsAsync<TEntity>(
+            IEnumerable<TEntity> entities,
+            int cancelBulkExecutionAfter = 30000)
+            where TEntity : BaseEntity;
+
         Task<TEntity> ReadItemAsync<TEntity>(
             string id, 
             string partitionKey, 

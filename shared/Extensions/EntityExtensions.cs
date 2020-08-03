@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Reflection;
 using Microsoft.Azure.Cosmos;
 using Shared.Attributes;
 using Shared.Entities;
@@ -20,7 +18,7 @@ namespace Shared.Extensions
             var properties = new ContainerProperties(
                 attribute.ContainerId, 
                 attribute.PartitionKeyPath);
-
+            
             return properties;
         }
 

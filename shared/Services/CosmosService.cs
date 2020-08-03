@@ -10,6 +10,7 @@ using Shared.Configuration;
 using Microsoft.Extensions.Logging;
 using Shared.Entities;
 using Shared.Extensions;
+using Shared.Helpers;
 
 namespace Shared.Services
 {
@@ -41,59 +42,32 @@ namespace Shared.Services
         }
 
         public async Task<IEnumerable<TEntity>> BulkCreateItemsAsync<TEntity>(
-            IEnumerable<TEntity> entities,
+            IList<TEntity> entities,
             int cancelBulkExecutionAfter = 30000)
             where TEntity : BaseEntity
         {
             if (!(_config.AllowBulkExecution ?? false))
                 throw new InvalidOperationException($"{nameof(_config.AllowBulkExecution)} must be true in order to perform this operation");
 
-            var cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.CancelAfter(cancelBulkExecutionAfter > 0 ? cancelBulkExecutionAfter : 30000);
-
-            var cancellationToken = cancellationTokenSource.Token;
-            
             var container = GetContainer<TEntity>();
-            
-            var errorCount = 0;
-            var result = new List<TEntity>();
-            var asyncTasks = new List<Task>(100);
 
-            void ContinuationFunction(Task<ItemResponse<TEntity>> task)
+            var bulkOperations = new BulkOperations<TEntity>(entities.Count());
+            foreach (var entity in entities)
             {
-                if (!task.IsCompletedSuccessfully)
-                {
-                    var innerExceptions = task.Exception?.Flatten();
-                    var cosmosException = innerExceptions?.InnerExceptions.FirstOrDefault(innerEx => innerEx is CosmosException) as CosmosException;
-
-                    _logger.LogError(cosmosException, $"Error trying to perform action {nameof(BulkCreateItemsAsync)}");
-                    errorCount += 1;
-                }
-                else
-                {
-                    result.Add(task.Result.Resource);
-                    _logger.LogItemResponse(task.Result);
-                }
+                bulkOperations.Tasks.Add(container
+                    .CreateItemAsync(
+                        item: entity,
+                        partitionKey: entity.GetPartitionKey())
+                    .CaptureOperationResponse(entity));
             }
+
+            var bulkOperationResponse =  await bulkOperations.ExecuteAsync();
+            _logger.LogBulkOperationResponse(bulkOperationResponse);
+
+            if(bulkOperationResponse.Failures.Any())
+                _logger.LogWarning("{FailureCount} items failed to be created during bulk operation", bulkOperationResponse.Failures.Count);
             
-            _logger.LogInformation($"{nameof(BulkCreateItemsAsync)} - starting");
-
-            asyncTasks.AddRange(
-                entities
-                    .Select(entity =>
-                        container.CreateItemAsync(
-                                item: entity,
-                                partitionKey: entity.GetPartitionKey(),
-                                cancellationToken: cancellationToken)
-                            .ContinueWith(ContinuationFunction, cancellationToken)));
-
-            await Task.WhenAll(asyncTasks);
-
-            if (errorCount > 0)
-                _logger.LogInformation($"{errorCount} records failed to be created during action {nameof(BulkCreateItemsAsync)}, check logs for error details");
-
-            _logger.LogInformation($"{nameof(BulkCreateItemsAsync)} - completed");
-
+            var result = bulkOperationResponse.Successes;
             return result;
         }
 
@@ -254,7 +228,7 @@ namespace Shared.Services
         {
             _logger.LogInformation("{Action} - Start", nameof(CreateContainerIfNotExistsAsync));
 
-            var database = await CreateDatabaseIfNotExistsAsync(_config.DatabaseId, cancellationToken); 
+            var database = await CreateDatabaseIfNotExistsAsync(_config.DatabaseId, _config.Throughput, cancellationToken); 
             var props = typeof(TEntity).GetContainerProperties();
 
             var containerResponse = await database.CreateContainerIfNotExistsAsync(props, cancellationToken: cancellationToken);
@@ -267,11 +241,11 @@ namespace Shared.Services
             return container;
         }
 
-        private async Task<Database> CreateDatabaseIfNotExistsAsync(string databaseId, CancellationToken cancellationToken = default)
+        private async Task<Database> CreateDatabaseIfNotExistsAsync(string databaseId, int? throughput = null, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("{Action} - Start", nameof(CreateDatabaseIfNotExistsAsync));
 
-            var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(databaseId, cancellationToken: cancellationToken);
+            var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(databaseId, throughput, cancellationToken: cancellationToken);
             _logger.LogDatabaseResponse(databaseResponse);
              
             var database = databaseResponse.Database;

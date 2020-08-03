@@ -16,7 +16,7 @@ namespace Shared.Services
             where TEntity : BaseEntity;
 
         Task<IEnumerable<TEntity>> BulkCreateItemsAsync<TEntity>(
-            IEnumerable<TEntity> entities,
+            IList<TEntity> entities,
             int cancelBulkExecutionAfter = 30000)
             where TEntity : BaseEntity;
 

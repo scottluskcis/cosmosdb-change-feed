@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
+using Shared.Helpers;
 
 namespace Shared.Extensions
 {
@@ -46,6 +47,15 @@ namespace Shared.Extensions
             logger.LogDebug("PartitionKey: {PartitionKey}, ContainerId: {ContainerId}", 
                 key.ToString(),
                 container.Id);
+        }
+
+        public static void LogBulkOperationResponse<T>(this ILogger logger, BulkOperationResponse<T> response)
+        {
+            logger.LogInformation("BulkOperationResponse - TotalTimeTaken: {TotalTimeTaken}, TotalRUs: {TotalRUs}, SuccessCount: {SuccessfulDocuments}, FailureCount: {Failures}",
+                response.TotalTimeTaken,
+                response.TotalRequestUnitsConsumed,
+                response.Successes.Count,
+                response.Failures.Count);
         }
     }
 }

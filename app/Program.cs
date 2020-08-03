@@ -1,14 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Cosmos.Fluent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.FileExtensions;
-using Microsoft.Extensions.Configuration.Json;
-using Microsoft.Extensions.Options;
 using Shared.Configuration;
 using Shared.Extensions;
 using Shared.Services;
@@ -33,7 +28,7 @@ namespace app
                     services.AddTransient<Application>();
 
                     services.AddCosmosClient();
-                    services.AddScoped(typeof(ICosmosService<>), typeof(CosmosService<>));
+                    services.AddTransient<ICosmosService, CosmosService>();
                 });
 
             var host = builder.Build();

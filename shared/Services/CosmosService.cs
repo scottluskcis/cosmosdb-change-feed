@@ -15,26 +15,25 @@ using Shared.Extensions;
 
 namespace Shared.Services
 {
-    public class CosmosService<TEntity> : ICosmosService<TEntity>
-        where TEntity : BaseEntity
+    public class CosmosService : ICosmosService
     {
         private readonly CosmosClient _client;
         private readonly CosmosDbConfiguration _config;
         private readonly ILogger _logger;
 
-        private Database _database;
-        private Container _container;
-
-        public CosmosService(CosmosClient client, IOptions<CosmosDbConfiguration> configuration, ILogger<CosmosService<TEntity>> logger)
+        public CosmosService(CosmosClient client, IOptions<CosmosDbConfiguration> configuration, ILogger<CosmosService> logger)
         {
             _client = client;
             _config = configuration.Value;
             _logger = logger;
         }
 
-        public async Task<TEntity> CreateItemAsync(TEntity item, CancellationToken cancellationToken = default)
+        public async Task<TEntity> CreateItemAsync<TEntity>(
+            TEntity item, 
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity
         {
-            var container = await GetContainerAsync(cancellationToken);
+            var container = GetContainer<TEntity>();
 
             var itemResponse = await container.CreateItemAsync(item, cancellationToken: cancellationToken);
             _logger.LogItemResponse(itemResponse);
@@ -43,9 +42,13 @@ namespace Shared.Services
             return result;
         }
 
-        public async Task<TEntity> ReadItemAsync(string id, string partitionKey, CancellationToken cancellationToken = default)
+        public async Task<TEntity> ReadItemAsync<TEntity>(
+            string id, 
+            string partitionKey,
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity
         {
-            var container = await GetContainerAsync(cancellationToken);
+            var container = GetContainer<TEntity>();
 
             var pk = new PartitionKey(partitionKey);
             _logger.LogPartitionKey(pk, container);
@@ -57,9 +60,12 @@ namespace Shared.Services
             return result;
         }
 
-        public async Task<TEntity> ReplaceItemAsync(TEntity item, CancellationToken cancellationToken = default)
+        public async Task<TEntity> ReplaceItemAsync<TEntity>(
+            TEntity item, 
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity
         {
-            var container = await GetContainerAsync(cancellationToken);
+            var container = GetContainer<TEntity>();
 
             var pk = item.GetPartitionKey();
             _logger.LogPartitionKey(pk, container);
@@ -71,9 +77,13 @@ namespace Shared.Services
             return result;
         }
 
-        public async Task<TEntity> DeleteItemAsync(string id, string partitionKey, CancellationToken cancellationToken = default)
+        public async Task<TEntity> DeleteItemAsync<TEntity>(
+            string id, 
+            string partitionKey, 
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity
         {
-            var container = await GetContainerAsync(cancellationToken);
+            var container = GetContainer<TEntity>();
             
             var pk = new PartitionKey(partitionKey);
             _logger.LogPartitionKey(pk, container);
@@ -85,9 +95,13 @@ namespace Shared.Services
             return result;
         }
          
-        public async Task<IEnumerable<TEntity>> ReadItemsAsync(Expression<Func<TEntity, bool>> predicate = null, string partitionKey = "", CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<TEntity>> ReadItemsAsync<TEntity>(
+            Expression<Func<TEntity, bool>> predicate = null, 
+            string partitionKey = "", 
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity
         {
-            var container = await GetContainerAsync(cancellationToken);
+            var container = GetContainer<TEntity>();
 
             var requestOptions = new QueryRequestOptions();
 
@@ -124,9 +138,13 @@ namespace Shared.Services
             return result;
         }
 
-        public async Task<IEnumerable<TEntity>> QueryItemsAsync(string sql, string partitionKey = "", CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<TEntity>> QueryItemsAsync<TEntity>(
+            string sql, 
+            string partitionKey = "", 
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity
         {
-            var container = await GetContainerAsync(cancellationToken);
+            var container = GetContainer<TEntity>();
 
             var requestOptions = new QueryRequestOptions();
 
@@ -160,30 +178,41 @@ namespace Shared.Services
             return result;
         }
 
-        private async Task<Container> GetContainerAsync(CancellationToken cancellationToken = default)
+        private Container GetContainer<TEntity>()
+            where TEntity : BaseEntity
         {
-            if (_container != null)
-                return _container;
-             
-            var database = await CreateDatabaseAsync(cancellationToken); 
+            var database = GetDatabase();
             var props = typeof(TEntity).GetContainerProperties();
-            
-            var containerResponse = await database.CreateContainerIfNotExistsAsync(props, cancellationToken: cancellationToken);
-            _logger.LogContainerResponse(containerResponse);
-            
-            var container = _container ??= containerResponse.Container;
+
+            var container = database.GetContainer(props.Id);
             return container;
         }
 
-        private async Task<Database> CreateDatabaseAsync(CancellationToken cancellationToken = default)
+        private Database GetDatabase()
         {
-            if (_database != null)
-                return _database;
+            var database = _client.GetDatabase(_config.DatabaseId);
+            return database;
+        }
+
+        public async Task<Container> CreateContainerIfNotExistsAsync<TEntity>(CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity
+        {
+            var database = await CreateDatabaseIfNotExistsAsync(_config.DatabaseId, cancellationToken); 
+            var props = typeof(TEntity).GetContainerProperties();
+
+            var containerResponse = await database.CreateContainerIfNotExistsAsync(props, cancellationToken: cancellationToken);
+            _logger.LogContainerResponse(containerResponse);
             
-            var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(_config.DatabaseId, cancellationToken: cancellationToken);
+            var container = containerResponse.Container;
+            return container;
+        }
+
+        private async Task<Database> CreateDatabaseIfNotExistsAsync(string databaseId, CancellationToken cancellationToken = default)
+        {
+            var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(databaseId, cancellationToken: cancellationToken);
             _logger.LogDatabaseResponse(databaseResponse);
              
-            var database = _database ??= databaseResponse.Database;
+            var database = databaseResponse.Database;
             return database;
         }
     }

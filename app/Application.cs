@@ -10,9 +10,9 @@ namespace app
     public class Application
     {
         private readonly ILogger _logger;
-        private readonly ICosmosService<PersonEntity> _service;
+        private readonly ICosmosService _service;
 
-        public Application(ICosmosService<PersonEntity> service, ILogger<Application> logger)
+        public Application(ICosmosService service, ILogger<Application> logger)
         {
             _service = service;
             _logger = logger;

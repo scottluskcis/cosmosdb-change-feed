@@ -12,6 +12,8 @@ namespace Shared.Configuration
         public bool CreateIfNotExists { get; set; }
         public ConsistencyLevel? ConsistencyLevel { get; set; }
         public bool? AllowBulkExecution { get; set; }
+        public string LeaseContainerName { get; set; } = "leases";
+        public string DataContainerName { get; set; } = "data";
 
         public bool UseThrottling =>
             MaxRetryAttemptsOnThrottledRequests.HasValue ||

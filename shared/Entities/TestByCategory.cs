@@ -5,7 +5,7 @@ using Shared.Attributes;
 namespace Shared.Entities
 {
     [CosmosEntity(
-        nameof(TestByCategory),
+        "data",
         new [] { nameof(Category) }
     )]
     public class TestByCategory : BaseEntity

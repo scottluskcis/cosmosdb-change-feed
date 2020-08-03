@@ -6,7 +6,7 @@ using Shared.Attributes;
 namespace Shared.Entities
 {
     [CosmosEntity(
-        nameof(TestByDateTime),
+        "feed",
         new [] { nameof(Month), nameof(Year) }
     )]
     public class TestByDateTime : BaseEntity

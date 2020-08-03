@@ -8,30 +8,9 @@ using Shared.Entities;
 
 namespace Shared.Services
 {
-    public interface ICosmosService
+    public interface IReadOnlyCosmosService
     {
-        Task<TEntity> CreateItemAsync<TEntity>(
-            TEntity item,
-            CancellationToken cancellationToken = default)
-            where TEntity : BaseEntity;
-
-        Task<IEnumerable<TEntity>> BulkCreateItemsAsync<TEntity>(
-            IEnumerable<TEntity> entities,
-            int cancelBulkExecutionAfter = 30000)
-            where TEntity : BaseEntity;
-
         Task<TEntity> ReadItemAsync<TEntity>(
-            string id, 
-            string partitionKey, 
-            CancellationToken cancellationToken = default)
-            where TEntity : BaseEntity;
-
-        Task<TEntity> ReplaceItemAsync<TEntity>(
-            TEntity item, 
-            CancellationToken cancellationToken = default)
-            where TEntity : BaseEntity;
-
-        Task<TEntity> DeleteItemAsync<TEntity>(
             string id, 
             string partitionKey, 
             CancellationToken cancellationToken = default)
@@ -48,9 +27,48 @@ namespace Shared.Services
             string partitionKey = "",
             CancellationToken cancellationToken = default)
             where TEntity : BaseEntity;
+    }
 
+    public interface ICosmosService : IReadOnlyCosmosService
+    {
         Task<Container> CreateContainerIfNotExistsAsync<TEntity>(
             CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity;
+
+        Task<TEntity> CreateItemAsync<TEntity>(
+            TEntity item,
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity;
+
+        Task<TEntity> ReplaceItemAsync<TEntity>(
+            TEntity item, 
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity;
+
+        Task<TEntity> UpsertItemAsync<TEntity>(
+            TEntity item,
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity;
+
+        Task<TEntity> DeleteItemAsync<TEntity>(
+            string id, 
+            string partitionKey, 
+            CancellationToken cancellationToken = default)
+            where TEntity : BaseEntity;
+    }
+
+    public interface IBulkExecutorCosmosService : IReadOnlyCosmosService
+    {
+        Task<IEnumerable<TEntity>> BulkCreateItemsAsync<TEntity>(
+            IList<TEntity> entities)
+            where TEntity : BaseEntity;
+
+        Task<IEnumerable<TEntity>> BulkReplaceItemsAsync<TEntity>(
+            IList<TEntity> entities)
+            where TEntity : BaseEntity;
+
+        Task<IEnumerable<TEntity>> BulkUpsertItemsAsync<TEntity>(
+            IList<TEntity> entities)
             where TEntity : BaseEntity;
     }
 }

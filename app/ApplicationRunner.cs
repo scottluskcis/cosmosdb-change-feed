@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System;
 using System.Threading.Tasks;
+using FizzWare.NBuilder;
+using FizzWare.NBuilder.Dates;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 using Shared.Entities;
 using Shared.Services;
 
@@ -26,26 +26,40 @@ namespace App
 
         public async Task RunAsync()
         {
-            _logger.LogInformation($"{nameof(ApplicationRunner)} is Running...");
+            _logger.LogInformation($"{nameof(ApplicationRunner)} is running...");
 
-            await SetupPersonEntityAsync();
+            await SetupGroupEntityAsync();
 
             _logger.LogInformation($"{nameof(ApplicationRunner)} is finished");
         }
 
-        private async Task SetupPersonEntityAsync()
+        private async Task SetupGroupEntityAsync()
         {
-            _logger.LogDebug($"Setting up {nameof(PersonEntity)}");
+            await _service.CreateContainerIfNotExistsAsync<TestByCategory>();
 
-            await _service.CreateContainerIfNotExistsAsync<PersonEntity>();
-            _logger.LogDebug("Container Created");
+            var generator = new RandomGenerator();
 
-            var json = JArray.Parse(await File.ReadAllTextAsync(@"data\PersonData.json"));
-            var data = json.ToObject<IEnumerable<PersonEntity>>(); 
-            await _service.BulkCreateItemsAsync(data);
-            _logger.LogDebug("Sample data added to container"); 
+            var groups = Builder<TestByCategory>
+                .CreateListOfSize(100)
+                .All()
+                    .With(x => x.Id = Guid.NewGuid())
+                    .With(x => x.DateTimeOffset = generator.Next(January.The1st, December.The31st))
+                    .With(x => x.Description = generator.NextString(25, 250))
+                .TheFirst(25)
+                    .With(x => x.Category = "Lorem")
+                .TheNext(25)
+                    .With(x => x.Category = "Ipsum")
+                .TheNext(25)
+                    .With(x => x.Category = "Sit")
+                .TheNext(25)
+                    .With(x => x.Category = "Dolor")
+                .Build();
 
-            _logger.LogDebug($"Finished setting up {nameof(PersonEntity)}");
+            if(_service is IBulkExecutorCosmosService bulkExecutorService)
+                await bulkExecutorService.BulkCreateItemsAsync(groups);
+            else
+                throw new NotSupportedException("service does not support Bulk Execution");
         }
+
     }
 }

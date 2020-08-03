@@ -24,38 +24,34 @@ namespace Shared.Extensions
 
         public static PartitionKey GetPartitionKey(this BaseEntity entity)
         {
-            var type = entity.GetType();
-            var props = type.GetContainerProperties();
-             
-            if (string.IsNullOrEmpty(props?.PartitionKeyPath))
-            {
-                return PartitionKey.None;
-            }
-            else
-            {
-                var value = entity.GetPartitionKeyValue();
-                var partitionKey = value != null ? new PartitionKey(value) : PartitionKey.Null;
-                return partitionKey;
-            } 
+            var value = entity.GetPartitionKeyValue();
+            var partitionKey = value != null ? new PartitionKey(value) : PartitionKey.Null;
+            return partitionKey;
         }
         
         public static string GetPartitionKeyValue(this BaseEntity entity)
         {
             var type = entity.GetType();
-            var props = type.GetContainerProperties();
+            
+            var attribute = type
+                .GetCustomAttributes(typeof(CosmosEntityAttribute), true)
+                .OfType<CosmosEntityAttribute>()
+                .Single();
 
-            var propertyName =
-                props.PartitionKeyPath.StartsWith("/")
-                    ? props.PartitionKeyPath.Substring(1)
-                    : props.PartitionKeyPath;
+            if(!attribute.PartitionKeyProperties.Any())
+                throw new ArgumentException($"At least one property must be indicated in {nameof(CosmosEntityAttribute.PartitionKeyProperties)}");
+             
+            var values = attribute.PartitionKeyProperties
+                .Select(propertyName => 
+                    type.GetProperty(propertyName)?.GetValue(entity))
+                .Where(s => s != null)
+                .ToList();
 
-            var value = type
-                .GetProperties()
-                .SingleOrDefault(p => string.Equals(p.Name, propertyName, StringComparison.OrdinalIgnoreCase))
-                ?.GetValue(entity)
-                ?.ToString();
+            if(values.Count != attribute.PartitionKeyProperties.Length)
+                throw new NullReferenceException($"PartitionKey could not be determined from indicated properties: {string.Join(',', attribute.PartitionKeyProperties)}");
 
-            return value;
+            var partitionKeyValue = string.Join(attribute.PartitionKeyPropertySeparator, values);
+            return partitionKeyValue;
         }
     }
 }
